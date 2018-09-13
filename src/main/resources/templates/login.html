@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org"
+      th:with="title='Log In'">
+<head th:replace="base :: common_header(${title}, ~{})">
+</head>
+<body th:replace="base :: common_content(${title}, ~{::div}, 'This interface will allow you to modify and manage users on the server.')">
+<div class="content">
+    <div th:if="${param.error}">
+        Invalid username and password.
+    </div>
+    <div th:if="${param.logout}">
+        You have been logged out.
+    </div>
+    <form th:action="@{/login}" method="post">
+        <table>
+            <tbody>
+            <tr>
+                <td>
+                    <label for="username">User Name:</label>
+                    <input id="username" type="text" name="username">
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    <label for="password">Password:</label>
+                    <input id="password" type="password" name="password">
+                </td>
+            </tr>
+            <tr>
+                <td colspan="2">
+                    <input id="remember-me" type="checkbox" name="remember-me"/>
+                    <label for="remember-me" class="checkbox">Remember Me</label>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="2">
+                    <input type="submit" value="Log In">
+                </td>
+            </tr>
+            </tbody>
+        </table>
+        <!--<div><label> User Name : <input type="text" name="username"/> </label></div>-->
+        <!--<div><label> Password: <input type="password" name="password"/> </label></div>-->
+        <!--<div><input type="submit" value="Sign In"/></div>-->
+    </form>
+</div>
+</body>
+</html>

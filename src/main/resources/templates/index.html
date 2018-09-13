@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" th:with="title='Index'">
+<head th:replace="base :: common_header(${title}, ~{})">
+    <meta charset="UTF-8">
+    <title>Index</title>
+</head>
+<body th:replace="base :: common_content(${title}, ~{::div}, 'This interface will allow you to modify and manage users on the server.')">
+<div class="content">
+    <p>Select "Users" under "Manage Database" in order to manage users.</p>
+</div>
+</body>
+</html>
