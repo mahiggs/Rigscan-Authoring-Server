@@ -1,5 +1,6 @@
 package com.epiroc.rigscan.authoringserver.authentication
 
+import com.epiroc.rigscan.authoringserver.configuration.AuthCookieHolder
 import com.epiroc.rigscan.authoringserver.db.repositories.UserRepository
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -12,10 +13,13 @@ import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.security.core.userdetails.UsernameNotFoundException
 import org.springframework.stereotype.Component
 import org.springframework.web.client.RestTemplate
+import org.springframework.web.context.request.RequestContextHolder
+import org.springframework.web.context.request.ServletRequestAttributes
+import javax.inject.Provider
 
 @Component
 class RigscanBasedAuthenticationProvider(private val properties: AuthenticationProperties, private val template: RestTemplate,
-                                         private val userRepository: UserRepository) : AbstractUserDetailsAuthenticationProvider() {
+                                         private val userRepository: UserRepository, private val cookieHolder: Provider<AuthCookieHolder>) : AbstractUserDetailsAuthenticationProvider() {
 
     companion object {
         private val log: Logger = LoggerFactory.getLogger(RigscanBasedAuthenticationProvider::class.java)
@@ -39,11 +43,14 @@ class RigscanBasedAuthenticationProvider(private val properties: AuthenticationP
                     "Bad credentials"))
         }
 
-        val loginResult = this.template.postForObject(apiEndpoint("/Account/ApiLogin"),
+        val entity = this.template.postForEntity(apiEndpoint("/Account/ApiLogin"),
                 LoginModel(userDetails.username, authentication.credentials.toString(), false),
                 LoginResultV1::class.java)
 
-        if (loginResult?.result != OblixLoginResult.UserAuthorized) {
+        cookieHolder.get().authCookie = entity.headers["Set-Cookie"]?.joinToString()
+                ?.split(';')?.get(0)?.trim()
+
+        if (entity.body?.result != OblixLoginResult.UserAuthorized) {
             throw BadCredentialsException(messages.getMessage(
                     "AbstractUserDetailsAuthenticationProvider.badCredentials",
                     "Bad credentials"))

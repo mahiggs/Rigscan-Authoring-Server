@@ -1,4 +1,4 @@
-package com.epiroc.rigscan.authoringserver.controllers
+package com.epiroc.rigscan.authoringserver.controllers.api
 
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.web.bind.annotation.PathVariable

@@ -25,7 +25,7 @@
                     <a href="javascript:void(0)">Manage Database</a>
 
                     <ul id="ChildItems">
-                        <li><a href="/users.html" th:href="@{/users}">Users</a></li>
+                        <li><a href="/users.html" th:href="@{/users/}">Users</a></li>
                     </ul>
                 </li>
                 <li>
@@ -73,6 +73,11 @@
         </div>
     </div>
 </div>
+<th:block th:fragment="script_block(scripts)">
+    <script type="text/javascript" th:src="@{/webjars/jquery/2.1.1/jquery.min.js}"></script>
+    <script type="text/javascript" th:src="@{/webjars/jquery-ui/1.10.4/ui/minified/jquery-ui.min.js}"></script>
+    <th:block th:replace="${scripts}"/>
+</th:block>
 <!--@Scripts.Render("~/bundles/jquery")-->
 <!--@Scripts.Render("~/bundles/jqueryui")-->
 <!--@RenderSection("scripts", required: false)-->

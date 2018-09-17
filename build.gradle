@@ -60,4 +60,13 @@ dependencies {
     testCompile('org.springframework.boot:spring-boot-starter-test')
     testCompile('org.springframework.restdocs:spring-restdocs-mockmvc')
     testCompile('org.springframework.security:spring-security-test')
+    compile 'javax.inject:javax.inject:1'
+
+    // configure webjars
+    compile 'org.webjars:jquery:2.1.1'
+    compile 'org.webjars:jquery-ui:1.10.4'
+    compile 'org.webjars:knockout:3.1.0'
+    compile 'org.webjars:select2:3.4.8'
+    compile 'org.webjars:lodash:4.17.4'
+    compile 'org.webjars.bower:knockout-validation:2.0.3'
 }
