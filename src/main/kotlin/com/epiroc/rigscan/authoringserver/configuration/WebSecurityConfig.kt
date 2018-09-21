@@ -18,13 +18,19 @@ class WebSecurityConfig : WebSecurityConfigurerAdapter(false) {
 
     override fun configure(http: HttpSecurity?) {
         http!!.authorizeRequests()!!
+                // allow all people to access /, /favicon.ico, and any of the static files
                 .antMatchers("/", "/favicon.ico", "/static/**", "/webjars/**")!!.permitAll()!!
+                // require all other requests to be authenticated
                 .anyRequest().authenticated()
                 .and()
+                // allow all users to access the login page
                 .formLogin().loginPage("/login")!!.permitAll()
                 .and()
-                .logout()
-                .permitAll()
+                // do not require CSRF on the API
+                .csrf().ignoringAntMatchers("/api/**", "/login")
+                .and()
+                // allow all users to access logout
+                .logout().permitAll()
     }
 
     @Bean

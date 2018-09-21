@@ -1,8 +1,7 @@
 package com.epiroc.rigscan.authoringserver.controllers
 
-import com.epiroc.rigscan.authoringserver.authentication.AuthenticationProperties
+import com.epiroc.rigscan.authoringserver.authentication.RigscanProperties
 import com.epiroc.rigscan.authoringserver.configuration.AuthCookieHolder
-import com.epiroc.rigscan.authoringserver.db.User
 import com.epiroc.rigscan.authoringserver.db.repositories.UserRepository
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.Logger
@@ -18,7 +17,7 @@ import java.time.ZonedDateTime
 
 @Controller
 class UsersController(val repository: UserRepository, val mapper: ObjectMapper, val cookieHolder: AuthCookieHolder,
-                      val template: RestTemplate, val properties: AuthenticationProperties) {
+                      val template: RestTemplate, val properties: RigscanProperties) {
 
     companion object {
         private val log: Logger = LoggerFactory.getLogger(UsersController::class.java)

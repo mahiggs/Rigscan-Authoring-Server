@@ -25,10 +25,34 @@ class User {
     @get:Column(name = "user_role")
     @get:Size(min = 1, message = "User must have at least one role assigned.")
     var roles: List<String?> = ArrayList()
+    @get:ElementCollection(fetch = FetchType.EAGER)
+    @get:CollectionTable(
+            name = "user_clients",
+            joinColumns = [JoinColumn(name = "user_id")]
+    )
+    @get:Column(name = "client_id")
+    var clients: MutableSet<String?> = HashSet()
     @get:Column(name = "created_at")
     @get:NotNull
     var createdAt: LocalDateTime? = null
     @get:Column(name = "modified_at")
     @get:NotNull
     var modifiedAt: LocalDateTime? = null
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as User
+
+        if (id != other.id) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        return id?.hashCode() ?: 0
+    }
+
+
 }

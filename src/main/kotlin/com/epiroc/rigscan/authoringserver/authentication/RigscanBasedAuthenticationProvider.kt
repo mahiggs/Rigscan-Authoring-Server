@@ -7,18 +7,14 @@ import org.slf4j.LoggerFactory
 import org.springframework.security.authentication.BadCredentialsException
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
 import org.springframework.security.authentication.dao.AbstractUserDetailsAuthenticationProvider
-import org.springframework.security.core.authority.SimpleGrantedAuthority
-import org.springframework.security.core.userdetails.User
 import org.springframework.security.core.userdetails.UserDetails
 import org.springframework.security.core.userdetails.UsernameNotFoundException
 import org.springframework.stereotype.Component
 import org.springframework.web.client.RestTemplate
-import org.springframework.web.context.request.RequestContextHolder
-import org.springframework.web.context.request.ServletRequestAttributes
 import javax.inject.Provider
 
 @Component
-class RigscanBasedAuthenticationProvider(private val properties: AuthenticationProperties, private val template: RestTemplate,
+class RigscanBasedAuthenticationProvider(private val properties: RigscanProperties, private val template: RestTemplate,
                                          private val userRepository: UserRepository, private val cookieHolder: Provider<AuthCookieHolder>) : AbstractUserDetailsAuthenticationProvider() {
 
     companion object {
