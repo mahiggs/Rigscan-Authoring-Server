@@ -64,6 +64,8 @@ class UsersRestController(val repository: UserRepository) : ResponseEntityExcept
     fun deleteUser(@PathVariable id: Long) {
         val item = this.repository.findById(id)
 
+        // TODO check in protocols
+
         if (item.isPresent) {
             this.repository.delete(item.get())
         } else {

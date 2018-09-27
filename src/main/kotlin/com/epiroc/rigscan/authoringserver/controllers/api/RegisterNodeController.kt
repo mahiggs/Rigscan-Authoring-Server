@@ -2,6 +2,7 @@ package com.epiroc.rigscan.authoringserver.controllers.api
 
 import com.epiroc.rigscan.authoringserver.authentication.UserBasedUserDetails
 import com.epiroc.rigscan.authoringserver.db.repositories.UserRepository
+import com.epiroc.rigscan.authoringserver.db.repositories.currentUser
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.http.ResponseEntity
@@ -23,9 +24,7 @@ class RegisterNodeController(val template: JdbcTemplate, val repository: UserRep
 
     @PostMapping("/api/registerNode")
     fun registerNode(@RequestBody nodeInfo: NodeInfo) : ResponseEntity<Any> {
-        val principal = SecurityContextHolder.getContext().authentication.principal as UserBasedUserDetails
-
-        val currentUser = this.repository.findById(principal.user.id!!).orElseThrow { ResourceNotFoundException() }
+        val currentUser = this.repository.currentUser()
 
         if (currentUser.clients.contains(nodeInfo.nodeId)) {
             log.warn("User [id={}] tried to register already registered node: {}", currentUser.id, nodeInfo.nodeId)

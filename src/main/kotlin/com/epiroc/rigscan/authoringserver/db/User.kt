@@ -1,5 +1,6 @@
 package com.epiroc.rigscan.authoringserver.db
 
+import com.sun.org.apache.xpath.internal.operations.Bool
 import java.time.LocalDateTime
 import javax.persistence.*
 import javax.validation.constraints.NotBlank
@@ -55,4 +56,8 @@ class User {
     }
 
 
+}
+
+fun User.isAdministrator() : Boolean {
+    return this.roles.contains("ADMINISTRATOR")
 }

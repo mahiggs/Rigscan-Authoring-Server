@@ -2,6 +2,7 @@ package com.epiroc.rigscan.authoringserver.controllers.api
 
 import com.epiroc.rigscan.authoringserver.authentication.UserBasedUserDetails
 import com.epiroc.rigscan.authoringserver.db.repositories.UserRepository
+import com.epiroc.rigscan.authoringserver.db.repositories.currentUser
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.http.ResponseEntity
@@ -90,9 +91,7 @@ class OutgoingBatchesController(val template: JdbcTemplate, val repository: User
     }
 
     fun isClientRegisteredWithAuthenticatedUser(nodeId: String): Boolean {
-        val principal = SecurityContextHolder.getContext().authentication.principal as UserBasedUserDetails
-
-        val currentUser = this.repository.findById(principal.user.id!!).orElseThrow { ResourceNotFoundException() }
+        val currentUser = this.repository.currentUser()
 
         if (!currentUser.clients.contains(nodeId)) {
             log.warn("User [id={}] tried to request information for node not registered to them: {}", currentUser.id, nodeId)
