@@ -7,6 +7,13 @@ class RigscanProperties {
 
     val version = Version()
     val server = Server()
+    val files = Files()
+
+    class Files {
+        /**The directory where the files are stored.
+         */
+        lateinit var directory : String
+    }
 
     class Version {
         /**The required version of the authoring tool.
