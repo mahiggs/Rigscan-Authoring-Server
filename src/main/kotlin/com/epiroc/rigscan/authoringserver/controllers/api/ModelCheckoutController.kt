@@ -14,39 +14,37 @@ import java.util.*
 
 @RestController
 @RequestMapping("/api/checkout/")
-class AuditCheckoutController(private val template: JdbcTemplate, private val repository: UserRepository) {
+class ModelCheckoutController(private val template: JdbcTemplate, private val repository: UserRepository) {
 
     companion object {
-        const val CHECK_OUT_PROTOCOL_DML: String = "UPDATE audit_protocols SET checked_out_by=?, checkout_performed_by=?, checked_out_reason=? WHERE id=? AND checked_out_by IS NULL"
-        const val CHECK_IN_PROTOCOL_DML: String = "UPDATE audit_protocols SET checked_out_by=NULL, checkout_performed_by=NULL, checked_out_reason=NULL WHERE id=?"
+        const val CHECK_OUT_PROTOCOL_DML: String = "INSERT INTO audit_protocol_checkouts (model_id, checked_out_by, checkout_performed_by, checked_out_reason) VALUES (?, ?, ?, ?)"
+        const val CHECK_IN_PROTOCOL_DML: String = "DELETE FROM audit_protocol_checkouts WHERE model_id=?"
     }
 
     @PostMapping
     @PreAuthorize("hasAnyAuthority('ADMINISTRATOR', 'USER')")
-    fun checkAuditOut(@RequestBody request: CheckoutRequest) : ResponseEntity<Any> {
+    fun checkModelOut(@RequestBody request: CheckoutRequest) : ResponseEntity<Any> {
         val currentUser = this.repository.currentUser()
         if (request.checkoutFor != null && request.checkoutFor.toLong() != currentUser.id && !currentUser.isAdministrator()) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(CheckoutResponse(false, "Normal users may not check out audits for other users."))
         }
 
-        val currentCheckoutStatus = this.template.queryForList("SELECT checked_out_by FROM audit_protocols WHERE id=?",
-                arrayOf(request.auditId.toString()), intArrayOf(Types.CHAR), Integer::class.java)
+        val currentCheckoutStatus = this.template.queryForList("SELECT checked_out_by FROM audit_protocol_checkouts WHERE model_id=?",
+                arrayOf(request.modelId.toString()), intArrayOf(Types.CHAR), Integer::class.java)
 
-        if (currentCheckoutStatus.size == 0) {
-            return ResponseEntity.notFound().build()
-        } else if (currentCheckoutStatus.size > 1) {
-            throw IllegalStateException("Found multiple results for one ID.")
+        if (currentCheckoutStatus.size > 1) {
+            throw IllegalStateException("Found multiple results for one ID. This should be impossible due to unique constraint.")
         }
 
-        if (currentCheckoutStatus[0] != null) {
+        if (currentCheckoutStatus.size == 1) {
             return ResponseEntity.badRequest()
                     .body(CheckoutResponse(false, "Audit protocol is already checked out."))
         }
 
         val rowsUpdated = this.template.update(CHECK_OUT_PROTOCOL_DML,
-                arrayOf(request.checkoutFor ?: currentUser.id, currentUser.id, request.checkoutReason, request.auditId.toString()),
-                intArrayOf(Types.INTEGER, Types.INTEGER, Types.VARCHAR, Types.CHAR))
+                arrayOf(request.modelId.toString(), request.checkoutFor ?: currentUser.id, currentUser.id, request.checkoutReason),
+                intArrayOf(Types.CHAR, Types.INTEGER, Types.INTEGER, Types.VARCHAR))
 
         return if (rowsUpdated <= 0) {
             ResponseEntity.badRequest()
@@ -56,27 +54,27 @@ class AuditCheckoutController(private val template: JdbcTemplate, private val re
         }
     }
 
-    @DeleteMapping("/{auditId}")
-    fun checkAuditIn(@PathVariable auditId: UUID) : ResponseEntity<Any> {
+    @DeleteMapping("/{modelId}")
+    fun checkModelIn(@PathVariable modelId: UUID) : ResponseEntity<Any> {
         val currentUser = this.repository.currentUser()
 
-        val currentCheckoutStatus = this.template.queryForList("SELECT checked_out_by FROM audit_protocols WHERE id=?",
-                arrayOf(auditId.toString()), intArrayOf(Types.CHAR), Integer::class.java)
+        val currentCheckoutStatus = this.template.queryForList("SELECT checked_out_by FROM audit_protocol_checkouts WHERE model_id=?",
+                arrayOf(modelId.toString()), intArrayOf(Types.CHAR), Integer::class.java)
 
         if (currentCheckoutStatus.size == 0) {
-            return ResponseEntity.notFound().build()
-        } else if (currentCheckoutStatus.size > 1) {
-            throw IllegalStateException("Found multiple results for one ID.")
+            return ResponseEntity.ok(Message("Audit is not checked out."))
         }
 
-        if (currentCheckoutStatus[0] == null) {
-            return ResponseEntity.ok(Message("Audit not checked out."))
-        } else if (!currentUser.isAdministrator() && currentUser.id != currentCheckoutStatus[0].toLong()) {
+        if (currentCheckoutStatus.size > 1) {
+            throw IllegalStateException("Found multiple results for one ID. Should be impossible")
+        }
+
+        if (!currentUser.isAdministrator() && currentUser.id != currentCheckoutStatus[0].toLong()) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(Message("Only administrators can check in audits checked out by others."))
         }
 
-        val updatedRows = this.template.update(CHECK_IN_PROTOCOL_DML, arrayOf(auditId.toString()), intArrayOf(Types.CHAR))
+        val updatedRows = this.template.update(CHECK_IN_PROTOCOL_DML, arrayOf(modelId.toString()), intArrayOf(Types.CHAR))
 
         return if (updatedRows <= 0) {
             ResponseEntity.badRequest().body(Message("Unable to check audit in."))
@@ -87,5 +85,5 @@ class AuditCheckoutController(private val template: JdbcTemplate, private val re
 
 }
 
-data class CheckoutRequest(val checkoutFor: Int?, val auditId: UUID, val checkoutReason: String?)
+data class CheckoutRequest(val checkoutFor: Int?, val modelId: UUID, val checkoutReason: String?)
 data class CheckoutResponse(val success: Boolean, val message: String?)
