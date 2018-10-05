@@ -20,7 +20,7 @@ class ModelCheckoutController(private val template: JdbcTemplate, private val re
 
     companion object {
         private val log: Logger = LoggerFactory.getLogger(ModelCheckoutController::class.java)
-        const val CHECK_OUT_PROTOCOL_DML: String = "INSERT INTO audit_protocol_checkouts (model_id, checked_out_by, checkout_performed_by, checked_out_reason) VALUES (?, ?, ?, ?)"
+        const val CHECK_OUT_PROTOCOL_DML: String = "INSERT INTO audit_protocol_checkouts (model_id, checked_out_by, checkout_performed_by, checked_out_reason, checked_out_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)"
         const val CHECK_IN_PROTOCOL_DML: String = "DELETE FROM audit_protocol_checkouts WHERE model_id=?"
     }
 
