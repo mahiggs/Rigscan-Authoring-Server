@@ -28,6 +28,9 @@ class ModelCheckoutController(private val template: JdbcTemplate, private val re
     @PreAuthorize("hasAnyAuthority('ADMINISTRATOR', 'USER')")
     fun checkModelOut(@RequestBody request: CheckoutRequest) : ResponseEntity<Any> {
         val currentUser = this.repository.currentUser()
+
+        log.info("Received Checkout Request: ${request.modelId}, ${request.checkoutFor}, ${request.checkoutReason}, currentUser: ${currentUser.id}")
+
         if (request.checkoutFor != null && request.checkoutFor.toLong() != currentUser.id && !currentUser.isAdministrator()) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(CheckoutResponse(false, "Normal users may not check out audits for other users."))
