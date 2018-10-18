@@ -3,16 +3,18 @@ package com.epiroc.rigscan.authoringserver.controllers.api
 import com.epiroc.rigscan.authoringserver.db.isAdministrator
 import com.epiroc.rigscan.authoringserver.db.repositories.UserRepository
 import com.epiroc.rigscan.authoringserver.db.repositories.currentUser
+import com.github.zafarkhaja.semver.Version
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.jdbc.core.JdbcTemplate
+import org.springframework.jdbc.core.simple.SimpleJdbcCall
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.web.bind.annotation.*
-import java.lang.IllegalStateException
 import java.sql.Types
 import java.util.*
+import javax.transaction.Transactional
 
 @RestController
 @RequestMapping("/api/checkout/")
@@ -25,6 +27,7 @@ class ModelCheckoutController(private val template: JdbcTemplate, private val re
     }
 
     @PostMapping
+    @Transactional
     @PreAuthorize("hasAnyAuthority('ADMINISTRATOR', 'USER')")
     fun checkModelOut(@RequestBody request: CheckoutRequest) : ResponseEntity<Any> {
         val currentUser = this.repository.currentUser()
@@ -52,12 +55,39 @@ class ModelCheckoutController(private val template: JdbcTemplate, private val re
                 arrayOf(request.modelId.toString(), request.checkoutFor ?: currentUser.id, currentUser.id, request.checkoutReason),
                 intArrayOf(Types.CHAR, Types.INTEGER, Types.INTEGER, Types.VARCHAR))
 
-        return if (rowsUpdated <= 0) {
-            ResponseEntity.badRequest()
+        if (rowsUpdated <= 0) {
+            return ResponseEntity.badRequest()
                     .body(CheckoutResponse(false, "Audit protocol was checked out when attempting to check out."))
-        } else {
-            ResponseEntity.ok(CheckoutResponse(true, null))
         }
+
+        // get the list of audits for this particular model and sort them by their version
+        val auditInformations = this.template.query("SELECT id, version FROM audit_protocols WHERE model_id=?",
+                arrayOf(request.modelId.toString()), intArrayOf(Types.CHAR)) { rs, _ ->
+            AuditInformation(UUID.fromString(rs.getString("id")),
+                    Version.valueOf(rs.getString("version")))
+        }.sortedBy { it.version }
+
+        // find the latest one
+        val latestInformation = auditInformations[auditInformations.size - 1]
+
+        val modelId = this.template.queryForList("SELECT id FROM versioned_model_information WHERE model_id=? AND version=?",
+                arrayOf(request.modelId.toString(), latestInformation.version.toString()),
+                intArrayOf(Types.CHAR, Types.VARCHAR), String::class.java)
+
+        if (modelId.size != 1) {
+            return ResponseEntity.badRequest()
+                    .body(CheckoutResponse(false, "Unable to find model version."))
+        }
+
+        // calculate what the version of the cloned audit should be
+        val newVersion = latestInformation.version!!.incrementMinorVersion()
+
+        // call the cloneAudit sproc with the latest audit id and the new version
+        SimpleJdbcCall(template).withProcedureName("cloneAudit")
+                .execute(mapOf("model_id" to modelId[0],
+                        "audit_id" to latestInformation.audit_id.toString(), "version" to newVersion))
+
+        return ResponseEntity.ok(CheckoutResponse(true, null))
     }
 
     @DeleteMapping("/{modelId}")
@@ -93,5 +123,6 @@ class ModelCheckoutController(private val template: JdbcTemplate, private val re
 
 }
 
+data class AuditInformation(val audit_id: UUID, val version: Version?)
 data class CheckoutRequest(val checkoutFor: Int?, val modelId: UUID, val checkoutReason: String?)
 data class CheckoutResponse(val success: Boolean, val message: String?)
