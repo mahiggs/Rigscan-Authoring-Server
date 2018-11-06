@@ -47,8 +47,7 @@ class ModelCheckoutController(private val template: JdbcTemplate, private val re
         }
 
         if (currentCheckoutStatus.size == 1) {
-            return ResponseEntity.badRequest()
-                    .body(CheckoutResponse(false, "Audit protocol is already checked out."))
+            throw BadRequestException("Audit protocol is already checked out.", false)
         }
 
         val rowsUpdated = this.template.update(CHECK_OUT_PROTOCOL_DML,
@@ -56,8 +55,7 @@ class ModelCheckoutController(private val template: JdbcTemplate, private val re
                 intArrayOf(Types.CHAR, Types.INTEGER, Types.INTEGER, Types.VARCHAR))
 
         if (rowsUpdated <= 0) {
-            return ResponseEntity.badRequest()
-                    .body(CheckoutResponse(false, "Audit protocol was checked out when attempting to check out."))
+            throw BadRequestException("Audit protocol was checked out when attempting to check out.", false)
         }
 
         // get the list of audits for this particular model and sort them by their version
@@ -70,13 +68,19 @@ class ModelCheckoutController(private val template: JdbcTemplate, private val re
         // find the latest one
         val latestInformation = auditInformations[auditInformations.size - 1]
 
-        val modelId = this.template.queryForList("SELECT id FROM versioned_model_information WHERE model_id=? AND version=?",
-                arrayOf(request.modelId.toString(), latestInformation.version.toString()),
-                intArrayOf(Types.CHAR, Types.VARCHAR), String::class.java)
+        val models = this.template.query("SELECT id, version FROM versioned_model_information WHERE model_id=?",
+                arrayOf(request.modelId.toString()),
+                intArrayOf(Types.CHAR)) { rs, _ ->
+            Pair(UUID.fromString(rs.getString("id")), Version.valueOf(rs.getString("version")))
+        }
 
-        if (modelId.size != 1) {
-            return ResponseEntity.badRequest()
-                    .body(CheckoutResponse(false, "Unable to find model version."))
+        val matchingModel = models.find {
+            latestInformation.version != null && latestInformation.version.majorVersion == it.second.majorVersion
+                    && latestInformation.version.minorVersion == it.second.minorVersion
+        }
+
+        if (matchingModel == null) {
+            throw BadRequestException("Unable to find model version.", false)
         }
 
         // calculate what the version of the cloned audit should be
@@ -84,7 +88,7 @@ class ModelCheckoutController(private val template: JdbcTemplate, private val re
 
         // call the cloneAudit sproc with the latest audit id and the new version
         SimpleJdbcCall(template).withProcedureName("cloneAudit")
-                .execute(mapOf("model_id" to modelId[0],
+                .execute(mapOf("model_id" to matchingModel.first.toString(),
                         "audit_id" to latestInformation.audit_id.toString(), "version" to newVersion))
 
         return ResponseEntity.ok(CheckoutResponse(true, null))
