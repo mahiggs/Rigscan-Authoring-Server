@@ -102,6 +102,11 @@ function UsersViewModel() {
     };
     self.textFilter.subscribe(doFilter);
     self.addNewUser = function() {
+        if (!usersDownloadSucceeded) {
+            alert("Failed to download users from main RigScan server. Log out and log in again to add users.");
+            return;
+        }
+
         var dialog = $("#add-user").dialog({
             modal: true,
             draggable: false,
