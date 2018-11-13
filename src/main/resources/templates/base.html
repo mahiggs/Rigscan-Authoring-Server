@@ -29,8 +29,8 @@
                     </ul>
                 </li>
                 <li>
-                    <a sec:authorize="isAnonymous()" th:href="@{/login}">Log In</a>
-                    <th:block sec:authorize="hasAuthority('ADMINISTRATOR')">
+                    <a sec:authorize="isAnonymous()" th:href="@{/oauth2/login/reply}">Log In</a>
+                    <th:block sec:authorize="!isAnonymous()">
                         <a href="javascript:document.getElementById('logoutForm').submit()">Log off</a>
                         <text>
                             <form id="logoutForm" action="/logout" method="post" th:action="@{/logout}">

@@ -1,7 +1,8 @@
 package com.epiroc.rigscan.authoringserver.controllers
 
+import com.epiroc.rigscan.authoringserver.authentication.BearerTokenHandler
 import com.epiroc.rigscan.authoringserver.authentication.RigscanProperties
-import com.epiroc.rigscan.authoringserver.configuration.AuthCookieHolder
+import com.epiroc.rigscan.authoringserver.configuration.BearerTokenHolder
 import com.epiroc.rigscan.authoringserver.db.repositories.UserRepository
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.Logger
@@ -16,7 +17,8 @@ import org.springframework.web.client.RestTemplate
 import java.time.ZonedDateTime
 
 @Controller
-class UsersController(val repository: UserRepository, val mapper: ObjectMapper, val cookieHolder: AuthCookieHolder,
+class UsersController(val repository: UserRepository, val mapper: ObjectMapper,
+                      val bearerTokenHolder: BearerTokenHolder, val bearerTokenHandler: BearerTokenHandler,
                       val template: RestTemplate, val properties: RigscanProperties) {
 
     companion object {
@@ -27,9 +29,12 @@ class UsersController(val repository: UserRepository, val mapper: ObjectMapper, 
     fun listUsers(model: Model) : String {
         var users : List<UserV1>? = null
 
-        if (cookieHolder.authCookie != null) {
+        // refresh the bearer token if necessary
+        bearerTokenHandler.refreshAuthenticationIfNecessary(bearerTokenHolder)
+
+        if (bearerTokenHolder.bearerToken != null) {
             val headers = HttpHeaders()
-            headers.set("Cookie", cookieHolder.authCookie)
+            headers.set("Authorization", "Bearer ${bearerTokenHolder.bearerToken}")
             val entity = HttpEntity(null, headers)
 
             val response: ResponseEntity<List<UserV1>>
@@ -41,9 +46,9 @@ class UsersController(val repository: UserRepository, val mapper: ObjectMapper, 
             } catch (e: HttpStatusCodeException) {
                 when (e.statusCode) {
                     HttpStatus.FORBIDDEN, HttpStatus.UNAUTHORIZED ->
-                        // we clear out the auth cookie if it is no longer working, we will indicate to user
+                        // we clear out the bearer token if it is no longer working, we will indicate to user
                         // that they must re-authenticate to add new users
-                        cookieHolder.authCookie = null
+                        bearerTokenHolder.clear()
                     else -> {
                         // if we don't recognize the status code, then log it out
                         log.error("Unrecognized code from server code=[{}], body=[{}]", e.statusCode, e.responseBodyAsString)
