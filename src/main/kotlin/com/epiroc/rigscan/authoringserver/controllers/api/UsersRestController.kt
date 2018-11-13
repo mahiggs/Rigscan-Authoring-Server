@@ -2,20 +2,23 @@ package com.epiroc.rigscan.authoringserver.controllers.api
 
 import com.epiroc.rigscan.authoringserver.db.User
 import com.epiroc.rigscan.authoringserver.db.repositories.UserRepository
+import com.epiroc.rigscan.authoringserver.db.repositories.currentUser
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
+import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.web.bind.MethodArgumentNotValidException
 import org.springframework.web.bind.annotation.*
 import org.springframework.web.context.request.WebRequest
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler
 import org.springframework.web.util.UriComponentsBuilder
+import java.sql.Types
 import java.time.ZonedDateTime
 import javax.validation.Valid
 
 @RestController
 @RequestMapping("/api/users")
-class UsersRestController(val repository: UserRepository) : ResponseEntityExceptionHandler() {
+class UsersRestController(val repository: UserRepository, val template: JdbcTemplate) : ResponseEntityExceptionHandler() {
 
     @GetMapping
     fun listUsers(): MutableIterable<User> {
@@ -32,6 +35,11 @@ class UsersRestController(val repository: UserRepository) : ResponseEntityExcept
         }
 
         return possibleUser.get()
+    }
+
+    @GetMapping("/whoami")
+    fun whoAmI() : User {
+        return this.repository.currentUser()
     }
 
     @PostMapping
@@ -64,9 +72,12 @@ class UsersRestController(val repository: UserRepository) : ResponseEntityExcept
     fun deleteUser(@PathVariable id: Long) {
         val item = this.repository.findById(id)
 
-        // TODO check in protocols
-
         if (item.isPresent) {
+            // before we delete the user, we need to check in their audit protocols
+            this.template.update("DELETE FROM audit_protocol_checkouts WHERE checked_out_by=?", arrayOf(id),
+                    intArrayOf(Types.INTEGER))
+
+            // delete the user
             this.repository.delete(item.get())
         } else {
             throw ResourceNotFoundException()
