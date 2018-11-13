@@ -3,6 +3,7 @@ package com.epiroc.rigscan.authoringserver.configuration
 import com.epiroc.rigscan.authoringserver.authentication.AzureActiveDirectoryB2CFilter
 import com.epiroc.rigscan.authoringserver.authentication.B2CProperties
 import com.epiroc.rigscan.authoringserver.authentication.BearerTokenHandler
+import com.epiroc.rigscan.authoringserver.authentication.BearerTokenHandlerFilter
 import com.epiroc.rigscan.authoringserver.db.repositories.UserRepository
 import org.springframework.boot.web.client.RestTemplateBuilder
 import org.springframework.context.annotation.*
@@ -30,12 +31,19 @@ class WebSecurityConfig(val properties: B2CProperties, val repository: UserRepos
                 bearerTokenHolder, bearerTokenHandler, repository)
     }
 
+    @Bean
+    fun bearerTokenHandlerFilter() : BearerTokenHandlerFilter {
+        return BearerTokenHandlerFilter(properties, repository)
+    }
+
     override fun configure(http: HttpSecurity) {
         http
                 .addFilterAfter(OAuth2ClientContextFilter(),
                         AbstractPreAuthenticatedProcessingFilter::class.java)
                 .addFilterAfter(openIdConnectFilter(),
                         OAuth2ClientContextFilter::class.java)
+                .addFilterAfter(bearerTokenHandlerFilter(),
+                        AzureActiveDirectoryB2CFilter::class.java)
                 .authorizeRequests()!!
                 // allow all people to access /, /favicon.ico, and any of the static files
                 .antMatchers("/", "/favicon.ico", "/static/**", "/webjars/**")!!.permitAll()!!
