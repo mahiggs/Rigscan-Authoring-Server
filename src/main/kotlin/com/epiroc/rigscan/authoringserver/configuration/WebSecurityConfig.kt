@@ -1,10 +1,14 @@
 package com.epiroc.rigscan.authoringserver.configuration
 
+import com.auth0.jwk.GuavaCachedJwkProvider
+import com.auth0.jwk.JwkProvider
+import com.auth0.jwk.UrlJwkProvider
 import com.epiroc.rigscan.authoringserver.authentication.AzureActiveDirectoryB2CFilter
 import com.epiroc.rigscan.authoringserver.authentication.B2CProperties
 import com.epiroc.rigscan.authoringserver.authentication.BearerTokenHandler
 import com.epiroc.rigscan.authoringserver.authentication.BearerTokenHandlerFilter
 import com.epiroc.rigscan.authoringserver.db.repositories.UserRepository
+import org.springframework.beans.factory.config.BeanDefinition
 import org.springframework.boot.web.client.RestTemplateBuilder
 import org.springframework.context.annotation.*
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
@@ -31,12 +35,12 @@ class WebSecurityConfig(val properties: B2CProperties, val repository: UserRepos
     @Bean
     fun openIdConnectFilter(): AzureActiveDirectoryB2CFilter {
         return AzureActiveDirectoryB2CFilter("/oauth2/login/reply", properties,
-                bearerTokenHolder, bearerTokenHandler, repository)
+                bearerTokenHolder, bearerTokenHandler, repository, jwkProvider())
     }
 
     @Bean
     fun bearerTokenHandlerFilter() : BearerTokenHandlerFilter {
-        return BearerTokenHandlerFilter(properties, repository)
+        return BearerTokenHandlerFilter(properties, repository, jwkProvider())
     }
 
     override fun configure(http: HttpSecurity) {
@@ -89,6 +93,11 @@ class WebSecurityConfig(val properties: B2CProperties, val repository: UserRepos
     @Bean
     fun springSecurityDialect(): SpringSecurityDialect {
         return SpringSecurityDialect()
+    }
+
+    @Bean @Scope(value = BeanDefinition.SCOPE_SINGLETON)
+    fun jwkProvider(): JwkProvider {
+        return GuavaCachedJwkProvider(UrlJwkProvider(properties.jwksUri))
     }
 }
 

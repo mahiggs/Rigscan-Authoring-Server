@@ -1,7 +1,6 @@
 package com.epiroc.rigscan.authoringserver.authentication
 
-import com.auth0.jwk.GuavaCachedJwkProvider
-import com.auth0.jwk.UrlJwkProvider
+import com.auth0.jwk.JwkProvider
 import com.epiroc.rigscan.authoringserver.controllers.api.UnauthorizedException
 import com.epiroc.rigscan.authoringserver.db.repositories.UserRepository
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -19,7 +18,8 @@ import javax.servlet.http.HttpServletResponse
 
 
 class BearerTokenHandlerFilter(private val properties: B2CProperties,
-                               private val userRepository: UserRepository) : OncePerRequestFilter() {
+                               private val userRepository: UserRepository,
+                               private val jwkProvider: JwkProvider) : OncePerRequestFilter() {
     override fun doFilterInternal(request: HttpServletRequest, response: HttpServletResponse, filterChain: FilterChain) {
         val authorizationHeader = request.getHeader("Authorization")
 
@@ -39,9 +39,6 @@ class BearerTokenHandlerFilter(private val properties: B2CProperties,
         val decodedClaims = ObjectMapper().readValue(decodedToken.claims, Map::class.java)
 
         verifyClaims(decodedClaims)
-
-        // if we have successfully verified the nonce, we can remove it from the session
-        request.session.removeAttribute("authNonce")
 
         if (decodedClaims[properties.userIdClaimName] !is String) {
             throw IllegalArgumentException("Claim value is not a string: ${decodedClaims[properties.userIdClaimName]} [class=${decodedClaims[properties.userIdClaimName]!!::class.java}")
@@ -83,8 +80,7 @@ class BearerTokenHandlerFilter(private val properties: B2CProperties,
     }
 
     private fun verifier(kid: String): RsaVerifier {
-        val provider = GuavaCachedJwkProvider(UrlJwkProvider(properties.jwksUri))
-        val jwk = provider[kid]
+        val jwk = jwkProvider[kid]
         return RsaVerifier(jwk.publicKey as RSAPublicKey)
     }
 }

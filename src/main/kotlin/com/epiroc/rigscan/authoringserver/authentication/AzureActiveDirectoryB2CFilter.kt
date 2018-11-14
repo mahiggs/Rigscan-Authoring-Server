@@ -1,6 +1,7 @@
 package com.epiroc.rigscan.authoringserver.authentication
 
 import com.auth0.jwk.GuavaCachedJwkProvider
+import com.auth0.jwk.JwkProvider
 import com.auth0.jwk.UrlJwkProvider
 import com.epiroc.rigscan.authoringserver.configuration.BearerTokenHolder
 import com.epiroc.rigscan.authoringserver.db.repositories.UserRepository
@@ -26,7 +27,8 @@ class AzureActiveDirectoryB2CFilter(defaultFilterProcessesUrl: String?,
                                     val properties: B2CProperties,
                                     val bearerTokenHolderProvider: Provider<BearerTokenHolder>,
                                     val bearerTokenHandler: BearerTokenHandler,
-                                    val userRepository: UserRepository) : AbstractAuthenticationProcessingFilter(defaultFilterProcessesUrl) {
+                                    val userRepository: UserRepository,
+                                    val jwkProvider: JwkProvider) : AbstractAuthenticationProcessingFilter(defaultFilterProcessesUrl) {
 
     init {
         authenticationManager = NoopAuthenticationManager()
@@ -129,8 +131,7 @@ class AzureActiveDirectoryB2CFilter(defaultFilterProcessesUrl: String?,
     }
 
     private fun verifier(kid: String): RsaVerifier {
-        val provider = GuavaCachedJwkProvider(UrlJwkProvider(properties.jwksUri))
-        val jwk = provider[kid]
+        val jwk = jwkProvider[kid]
         return RsaVerifier(jwk.publicKey as RSAPublicKey)
     }
 
