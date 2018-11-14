@@ -10,6 +10,7 @@ import org.springframework.context.annotation.*
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter
+import org.springframework.security.core.AuthenticationException
 import org.springframework.security.oauth2.client.filter.OAuth2ClientContextFilter
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint
 import org.springframework.security.web.authentication.preauth.AbstractPreAuthenticatedProcessingFilter
@@ -18,6 +19,8 @@ import org.springframework.web.client.RestTemplate
 import org.thymeleaf.extras.springsecurity4.dialect.SpringSecurityDialect
 import java.time.ZonedDateTime
 import javax.inject.Provider
+import javax.servlet.http.HttpServletRequest
+import javax.servlet.http.HttpServletResponse
 
 
 @Configuration
@@ -51,7 +54,7 @@ class WebSecurityConfig(val properties: B2CProperties, val repository: UserRepos
                 .anyRequest().authenticated()
                 .and()
                 // allow all users to access the login page
-                .httpBasic().authenticationEntryPoint(LoginUrlAuthenticationEntryPoint("/oauth2/login/reply"))
+                .httpBasic().authenticationEntryPoint(ApiIgnoringAuthenticationEntryPoint())
                 .and()
 //                .formLogin().loginPage("/login")!!.permitAll()
 //                .and()
@@ -61,8 +64,19 @@ class WebSecurityConfig(val properties: B2CProperties, val repository: UserRepos
                 // allow all users to access logout
                 .logout().permitAll()
                 .logoutSuccessUrl(properties.logoutUri + "&post_logout_redirect_uri=${properties.postLogoutRedirectUri}")
-                .and()
 
+    }
+
+    inner class ApiIgnoringAuthenticationEntryPoint : LoginUrlAuthenticationEntryPoint("/oauth2/login/reply") {
+        override fun commence(request: HttpServletRequest?, response: HttpServletResponse?, authException: AuthenticationException?) {
+            val originalRequestURI = request?.getAttribute("originalRequestURI") as String?
+
+            if (originalRequestURI != null && originalRequestURI.contains("/api/")) {
+                response?.sendError(401, "Access denied.")
+            } else {
+                super.commence(request, response, authException)
+            }
+        }
     }
 
     @Bean

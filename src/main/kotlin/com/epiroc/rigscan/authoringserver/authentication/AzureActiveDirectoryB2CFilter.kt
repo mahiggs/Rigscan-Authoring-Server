@@ -32,11 +32,15 @@ class AzureActiveDirectoryB2CFilter(defaultFilterProcessesUrl: String?,
         authenticationManager = NoopAuthenticationManager()
     }
 
-    override fun attemptAuthentication(request: HttpServletRequest?, response: HttpServletResponse?): Authentication {
+    override fun attemptAuthentication(request: HttpServletRequest?, response: HttpServletResponse?): Authentication? {
         val parameterNames = request?.parameterNames?.toList()?.toHashSet() ?: setOf<String>()
 
         if (request == null || response == null) {
             throw IllegalArgumentException("Request and response must be non-null.")
+        }
+
+        if (request.requestURI.contains("/api/")) {
+            return null
         }
 
         // if we are receiving the result of the redirect and the token has been returned

@@ -2,6 +2,7 @@ package com.epiroc.rigscan.authoringserver.authentication
 
 import com.auth0.jwk.GuavaCachedJwkProvider
 import com.auth0.jwk.UrlJwkProvider
+import com.epiroc.rigscan.authoringserver.controllers.api.UnauthorizedException
 import com.epiroc.rigscan.authoringserver.db.repositories.UserRepository
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken
@@ -21,6 +22,8 @@ class BearerTokenHandlerFilter(private val properties: B2CProperties,
                                private val userRepository: UserRepository) : OncePerRequestFilter() {
     override fun doFilterInternal(request: HttpServletRequest, response: HttpServletResponse, filterChain: FilterChain) {
         val authorizationHeader = request.getHeader("Authorization")
+
+        request.setAttribute("originalRequestURI", request.requestURI)
 
         if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response)
@@ -49,9 +52,13 @@ class BearerTokenHandlerFilter(private val properties: B2CProperties,
 
         val user = UserBasedUserDetails(dbUser)
 
-        SecurityContextHolder.getContext().authentication = UsernamePasswordAuthenticationToken(user, null, user.authorities)
+        val securityContext = SecurityContextHolder.getContext()
+        val previousAuthentication = securityContext.authentication
+        securityContext.authentication = UsernamePasswordAuthenticationToken(user, null, user.authorities)
 
         filterChain.doFilter(request, response)
+
+        securityContext.authentication = previousAuthentication
     }
 
     private fun verifyClaims(claims: Map<*, *>) {
@@ -62,16 +69,16 @@ class BearerTokenHandlerFilter(private val properties: B2CProperties,
         val now = LocalDateTime.now(ZoneOffset.UTC)
 
         if (now.isBefore(notBeforeDate)) {
-            throw RuntimeException("Token is not yet valid: nbf=$notBeforeDate")
+            throw UnauthorizedException("Token is not yet valid: nbf=$notBeforeDate")
         }
         if (expireDate.isBefore(now)) {
-            throw RuntimeException("Token has expired: exp=$expireDate")
+            throw UnauthorizedException("Token has expired: exp=$expireDate")
         }
         if (claims["iss"] != properties.issuer) {
-            throw RuntimeException("Unrecognized issuer: expected=${properties.issuer}, actual=${claims["iss"]}")
+            throw UnauthorizedException("Unrecognized issuer: expected=${properties.issuer}, actual=${claims["iss"]}")
         }
         if (claims["aud"] != properties.clientId) {
-            throw RuntimeException("Invalid audience: expected=${properties.clientId}, actual=${claims["aud"]}")
+            throw UnauthorizedException("Invalid audience: expected=${properties.clientId}, actual=${claims["aud"]}")
         }
     }
 
